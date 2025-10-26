@@ -328,7 +328,7 @@ public class HandleCombat : MonoBehaviour
                 {
                     PlayMusic(1);
                     DealDamageToEnemy(converted);
-                    CombatLogUI.Instance?.ShowMessage($"You strike with your converted shields for {converted} dmg!", 2.8f);
+                    CombatLogUI.Instance?.ShowMessage($"You strike for {converted} dmg!", 2.8f);
                 }
                 break;
         }
