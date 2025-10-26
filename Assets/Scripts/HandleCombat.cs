@@ -276,8 +276,7 @@ public class HandleCombat : MonoBehaviour
         switch (slot)
         {
             case 1:
-                DealDamageToEnemy(10);
-                PlayMusic(1);
+                windDoublecast = true;
                 CombatLogUI.Instance?.ShowMessage("You activate Doublecast for slot 3!", 2.5f);
                 break;
 
@@ -290,12 +289,12 @@ public class HandleCombat : MonoBehaviour
                 int dmg3 = Mathf.RoundToInt(10 * damageBuff * vulnerable);
                 DealDamageToEnemy(dmg3);
                 PlayMusic(1);
-                CombatLogUI.Instance?.ShowMessage($"You strike for {dmg3} damage and double evasion chance for this turn!", 2.5f);
+                CombatLogUI.Instance?.ShowMessage($"You strike for {dmg3} damage and double evasion!", 2.5f);
                 if(windDoublecast)
                 {
                     PlayMusic(1);
                     DealDamageToEnemy(dmg3);
-                    CombatLogUI.Instance?.ShowMessage($"You strike for {dmg3} damage and double evasion chance for this turn!", 2.5f);
+                    CombatLogUI.Instance?.ShowMessage($"You strike for {dmg3} damage and double evasion!", 2.5f);
                 }
                 break;
         }
