@@ -11,6 +11,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/game.unity
     guid: b86b2ced8339de240ad56ecfef2e6516
+  - enabled: 1
+    path: Assets/lose.unity
+    guid: f4185870181c70a4294fe8aea4ab503b
+  - enabled: 1
+    path: Assets/wiin.unity
+    guid: 633efce382e661242823a20c3199c32e
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0

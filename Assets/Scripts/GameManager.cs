@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using System.Collections;
 using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
@@ -28,23 +30,32 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
     }
 
-    // Called from SlotsButton when a selection is made
+    void Start()
+    {
+        // ✅ Ensure everything starts fresh on scene load
+        ResetSpinState();
+    }
+
     public void AddChosenItem(string itemName, Sprite itemSprite)
     {
+        if (!canSpin)
+        {
+            Debug.Log("⛔ Can't spin — waiting for next round!");
+            return;
+        }
+
         chosenItems.Add(itemName);
         currentRoll++;
 
         Debug.Log($"✅ Added {itemName} to chosen items ({currentRoll}/{maxRollsPerTurn})");
-
         UpdateSlotIcon(currentRoll - 1, itemSprite);
 
-        // Check if all items chosen
+        // reached turn limit
         if (currentRoll >= maxRollsPerTurn)
         {
             canSpin = false;
             Debug.Log("🎯 All spins used! Processing combat...");
 
-            // 🆕 Trigger combat handler
             if (HandleCombat.Instance != null)
                 HandleCombat.Instance.ProcessTurn(chosenItems);
             else
@@ -65,12 +76,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void StartNextRound()
+    // 🧹 Clears slot icons + resets internal choices
+    public void ClearItemSlots()
     {
-        currentRoll = 0;
-        canSpin = true;
-        chosenItems.Clear();
-
         foreach (string name in slotIconNames)
         {
             GameObject iconObj = GameObject.Find(name);
@@ -82,6 +90,58 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        chosenItems.Clear();
+        currentRoll = 0;
+        canSpin = true; // ✅ ensures player can roll again next round
+
+        Debug.Log("🧹 Slots cleared and player can spin again!");
+    }
+
+    public void StartNextRound()
+    {
+        ClearItemSlots();
+        ResetSpinState();
+
         Debug.Log("🔁 Next round started!");
+
+        // reset slot machine state
+        SlotsButton slot = Object.FindFirstObjectByType<SlotsButton>();
+        if (slot != null)
+            slot.ResetRoll();
+    }
+
+    // ✅ Centralized spin reset logic
+    public void ResetSpinState()
+    {
+        currentRoll = 0;
+        canSpin = true;
+
+        Debug.Log("🎯 Spin state reset — ready for next round!");
+    }
+
+    // 🚪 Game end logic
+    public void EndGame(bool playerWon)
+    {
+        canSpin = false;
+        Debug.Log(playerWon ? "🎉 Player Victory!" : "💀 Player Defeat!");
+
+        // small delay before switching scenes
+        StartCoroutine(LoadEndSceneDelayed(playerWon));
+    }
+
+    private IEnumerator LoadEndSceneDelayed(bool playerWon)
+    {
+        yield return new WaitForSeconds(2.5f);
+        if (playerWon)
+        {
+            SceneManager.LoadScene(3);
+        }
+        else
+        {
+            SceneManager.LoadScene(2);
+        }
+
+        // 🧭 Switch to Game Over / Main Menu (index 0 or 2)
+        
     }
 }

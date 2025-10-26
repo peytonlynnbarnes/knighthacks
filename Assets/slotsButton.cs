@@ -6,6 +6,8 @@ public class SlotsButton : MonoBehaviour
 {
     [Header("Animation Settings")]
     public string spriteObjectName = "slots_spritesheet";
+    public AudioSource audioSource; // assign in Inspector
+    public AudioClip musicClip;     // optional: choose clip in Inspector
     public string triggerName = "slotsActive";
     private Animator spriteAnimator;
 
@@ -77,6 +79,20 @@ public class SlotsButton : MonoBehaviour
         SetItemButtonsInteractable(false);
         StartCoroutine(UpdateImagesAfterDelay(imageDelay));
     }
+
+    public void ResetRoll()
+    {
+        item_Time = 0;
+        rolling = false;
+
+        // Make sure the spin button becomes clickable again
+        Button spinButton = GetComponent<Button>();
+        if (spinButton != null)
+            spinButton.interactable = true;
+
+        Debug.Log("🎯 Slot roll reset — ready for next round!");
+    }
+
 
     IEnumerator UpdateImagesAfterDelay(float delay)
     {
@@ -174,5 +190,20 @@ public class SlotsButton : MonoBehaviour
                 btn.interactable = state;
             }
         }
+    }
+
+    public void PlayMusic()
+    {
+        if (audioSource == null)
+        {
+            Debug.LogWarning("⚠️ No AudioSource assigned!");
+            return;
+        }
+
+        if (musicClip != null)
+            audioSource.clip = musicClip; // change track if needed
+
+        audioSource.Play(); // 🔊 start playing
+        Debug.Log("🎵 Music started!");
     }
 }

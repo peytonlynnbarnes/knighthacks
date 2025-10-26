@@ -6,6 +6,11 @@ using System.Collections.Generic;
 public class HandleCombat : MonoBehaviour
 {
     public static HandleCombat Instance;
+    private int enemyTurnCount = 0;
+
+    public AudioSource audioAttack;
+    public AudioSource audioDefend;
+    public AudioSource audioHeal;
 
     [Header("Player & Enemy Stats")]
     public int playerHealth = 100;
@@ -16,12 +21,17 @@ public class HandleCombat : MonoBehaviour
     [Header("UI Elements (TMP)")]
     public TMP_Text playerHealthText;
     public TMP_Text enemyHealthText;
+    public TMP_Text playerShieldText;
+    public TMP_Text enemyShieldText;
 
-    // modifiers for chaining effects
     private float damageBuff = 1f;
     private float shieldBuff = 1f;
     private float waterBuff = 1f;
     private bool windQuickcast = false;
+    private int enemyBurnStacks = 0;
+
+    private bool isPlayerTurn = true;
+    private bool gameEnded = false;
 
     void Awake()
     {
@@ -33,104 +43,190 @@ public class HandleCombat : MonoBehaviour
 
     void Start()
     {
-        UpdateHealthUI();
+        UpdateAllUI();
     }
 
     public void ProcessTurn(List<string> chosenItems)
     {
-        Debug.Log("⚔️ Processing combat turn...");
-        damageBuff = 1f;
-        shieldBuff = 1f;
-        waterBuff = 1f;
-        windQuickcast = false;
+        if (!isPlayerTurn || gameEnded) return;
+        StartCoroutine(PlayerTurn(chosenItems));
+    }
+
+    private IEnumerator PlayerTurn(List<string> chosenItems)
+    {
+        ResetTurnModifiers();
 
         for (int i = 0; i < chosenItems.Count; i++)
         {
+            if (gameEnded) yield break;
+
             int slot = i + 1;
             string raw = chosenItems[i].ToLower();
 
-            // normalize variants
             string item = "none";
             if (raw.Contains("fire")) item = "fire";
-            else if (raw.Contains("wind") || raw.Contains("air")) item = "wind";
+            else if (raw.Contains("air")) item = "wind";
             else if (raw.Contains("water")) item = "water";
             else if (raw.Contains("earth")) item = "earth";
 
             switch (item)
             {
                 case "fire":
+                    PlayMusic(1);
+                    CombatLogUI.Instance?.ShowMessage($"Fire Slot {slot} activated!", 2.5f);
+                    yield return new WaitForSeconds(1.2f);
                     FireEffect(slot);
                     break;
 
                 case "water":
+                    PlayMusic(3);
+                    CombatLogUI.Instance?.ShowMessage($"Water Slot {slot} activated!", 2.5f);
+                    yield return new WaitForSeconds(1.2f);
                     WaterEffect(slot);
                     break;
 
                 case "wind":
+                    PlayMusic(1);
+                    CombatLogUI.Instance?.ShowMessage($"Wind Slot {slot} activated!", 2.5f);
+                    yield return new WaitForSeconds(1.2f);
                     WindEffect(slot);
                     break;
 
                 case "earth":
+                    PlayMusic(2);
+                    CombatLogUI.Instance?.ShowMessage($"Earth Slot {slot} activated!", 2.5f);
+                    yield return new WaitForSeconds(1.2f);
                     EarthEffect(slot);
-                    break;
-
-                default:
-                    Debug.Log("❓ Unknown element: " + raw);
                     break;
             }
 
-            UpdateHealthUI();
-            if (playerHealth <= 0 || enemyHealth <= 0) break;
+            UpdateAllUI();
+
+            if (playerHealth <= 0 || enemyHealth <= 0)
+            {
+                CheckCombatResult();
+                yield break;
+            }
+
+            yield return new WaitForSeconds(2.8f); // ⏳ longer pause between slot actions
         }
 
-        CheckCombatResult();
-        StartCoroutine(NextRoundDelay());
+        isPlayerTurn = false;
+        yield return new WaitForSeconds(1.5f);
+        StartCoroutine(EnemyTurn());
     }
 
-    // ----------------------------
-    // 🔥 FIRE
-    // ----------------------------
+    private IEnumerator EnemyTurn()
+    {
+        if (gameEnded) yield break;
+
+        CombatLogUI.Instance?.ShowMessage("👹 Enemy turn begins...", 2f);
+        yield return new WaitForSeconds(1f);
+
+        if (enemyBurnStacks > 0)
+        {
+            int burnThisTurn = Mathf.Min(3, enemyBurnStacks);
+            DealDamageToEnemy(burnThisTurn);
+            enemyBurnStacks -= burnThisTurn;
+            CombatLogUI.Instance?.ShowMessage($"Enemy takes {burnThisTurn} burn damage!", 2f);
+            yield return new WaitForSeconds(1.8f);
+        }
+
+        if (enemyHealth <= 0 || playerHealth <= 0)
+        {
+            CheckCombatResult();
+            yield break;
+        }
+
+        EnemyAttackPattern();
+        UpdateAllUI();
+        CheckCombatResult();
+
+        if (!gameEnded && playerHealth > 0 && enemyHealth > 0)
+        {
+            yield return new WaitForSeconds(2.5f);
+            CombatLogUI.Instance?.ShowMessage("🌀 Your turn!", 1.8f);
+            isPlayerTurn = true;
+            GameManager.Instance?.StartNextRound();
+        }
+    }
+
+    private void EnemyAttackPattern()
+    {
+        enemyTurnCount++;
+        float scale = Mathf.Min(1f + (enemyTurnCount - 1) * 0.08f, 2.0f);
+
+        int roll = Random.Range(0, 100);
+        if (enemyTurnCount > 6) roll += 15;
+
+        if (roll < 40)
+        {
+            int damage = Mathf.RoundToInt(8 * scale);
+            PlayMusic(1);
+            TakeDamage(damage);
+            CombatLogUI.Instance?.ShowMessage($"Enemy claws you for {damage} damage!", 2.5f);
+        }
+        else if (roll < 70)
+        {
+            int shieldGain = Mathf.RoundToInt(8 * scale);
+            PlayMusic(2);
+            enemyShield += shieldGain;
+            CombatLogUI.Instance?.ShowMessage($"Enemy braces and gains {shieldGain} shield!", 2.5f);
+        }
+        else
+        {
+            int damage = Mathf.RoundToInt(5 * scale);
+            int shieldGain = Mathf.RoundToInt(4 * scale);
+            PlayMusic(1);
+            TakeDamage(damage);
+            enemyShield += shieldGain;
+            CombatLogUI.Instance?.ShowMessage($"Enemy strikes: {damage} dmg, +{shieldGain} shield.", 2.5f);
+        }
+    }
+
+    private void ResetTurnModifiers()
+    {
+        damageBuff = 1f;
+        shieldBuff = 1f;
+        waterBuff = 1f;
+        windQuickcast = false;
+    }
+
     private void FireEffect(int slot)
     {
         switch (slot)
         {
             case 1:
-                Debug.Log("🔥 Fire Slot 1: Deal 5 damage and boost next 2 attacks by 50%!");
                 DealDamageToEnemy(5);
                 damageBuff = 1.5f;
+                CombatLogUI.Instance?.ShowMessage("You hit for 5 dmg (+50% next attack!)", 2.5f);
                 break;
 
             case 2:
-                int baseDmg2 = 16;
-                int boostedDmg2 = Mathf.RoundToInt(baseDmg2 * damageBuff);
-                DealDamageToEnemy(boostedDmg2);
-                Debug.Log($"🔥 Fire Slot 2: Deal {boostedDmg2} damage and burn for 6 over time!");
-                // Burn as delayed DoT
-                StartCoroutine(ApplyBurn(3, 2));
+                int boosted2 = Mathf.RoundToInt(10 * damageBuff);
+                DealDamageToEnemy(boosted2);
+                enemyBurnStacks += 6;
+                CombatLogUI.Instance?.ShowMessage($"You deal {boosted2} dmg and apply 6 Burn!", 2.5f);
                 break;
 
             case 3:
-                int baseDmg3 = 22;
-                int boostedDmg3 = Mathf.RoundToInt(baseDmg3 * damageBuff);
-                int recoil = 5;
-                DealDamageToEnemy(boostedDmg3);
-                playerHealth -= recoil;
-                Debug.Log($"🔥 Fire Slot 3: Inferno Finisher! Deal {boostedDmg3} and take {recoil} recoil!");
+                int boosted3 = Mathf.RoundToInt(15 * damageBuff);
+                int recoil = Mathf.RoundToInt(boosted3 * 0.33f);
+                DealDamageToEnemy(boosted3);
+                TakeDamage(recoil);
+                CombatLogUI.Instance?.ShowMessage($"Inferno! {boosted3} dmg, {recoil} recoil!", 2.8f);
                 break;
         }
     }
 
-    // ----------------------------
-    // 💧 WATER
-    // ----------------------------
     private void WaterEffect(int slot)
     {
         switch (slot)
         {
             case 1:
-                Debug.Log("💧 Water Slot 1: Heal 6 HP, cleanse 1 debuff, and boost next 2 effects by 20%!");
                 HealPlayer(6);
                 waterBuff = 1.2f;
+                CombatLogUI.Instance?.ShowMessage("You heal 6 HP (+20% future heals)", 2.5f);
                 break;
 
             case 2:
@@ -138,7 +234,7 @@ public class HandleCombat : MonoBehaviour
                 int shield = Mathf.RoundToInt(10 * waterBuff);
                 HealPlayer(heal);
                 GainShield(shield);
-                Debug.Log($"💧 Water Slot 2: Heal {heal} HP and gain {shield} Shield.");
+                CombatLogUI.Instance?.ShowMessage($"You heal {heal} and gain {shield} shield!", 2.8f);
                 break;
 
             case 3:
@@ -146,76 +242,66 @@ public class HandleCombat : MonoBehaviour
                 int shield2 = Mathf.RoundToInt(8 * waterBuff);
                 DealDamageToEnemy(dmg);
                 GainShield(shield2);
-                Debug.Log($"💧 Water Slot 3: Deal {dmg} damage and gain {shield2} Shield.");
+                CombatLogUI.Instance?.ShowMessage($"You hit for {dmg} and gain {shield2} shield!", 2.8f);
                 break;
         }
     }
 
-    // ----------------------------
-    // 🌪️ WIND
-    // ----------------------------
     private void WindEffect(int slot)
     {
         switch (slot)
         {
             case 1:
-                Debug.Log("🌪️ Wind Slot 1: Deal 10 damage. Next 2 slots have 20% less effect but 50% chance to echo 50%!");
                 DealDamageToEnemy(10);
                 windQuickcast = true;
+                CombatLogUI.Instance?.ShowMessage("You hit for 10 and activate Quickcast!", 2.5f);
                 break;
 
             case 2:
-                int baseDmg = 14;
-                int actual = windQuickcast ? Mathf.RoundToInt(baseDmg * 0.8f) : baseDmg;
-                DealDamageToEnemy(actual);
+                int dmg2 = Mathf.RoundToInt((windQuickcast ? 11.2f : 14f));
+                DealDamageToEnemy(dmg2);
                 GainShield(4);
-                if (Random.value < 0.3f) // 30% double-cast
+                CombatLogUI.Instance?.ShowMessage($"You deal {dmg2} and gain 4 shield!", 2.8f);
+                if (Random.value < 0.3f)
                 {
-                    DealDamageToEnemy(actual);
-                    Debug.Log("🌪️ Wind double-cast triggered!");
+                    DealDamageToEnemy(dmg2);
+                    CombatLogUI.Instance?.ShowMessage($"Double-cast! Another {dmg2} dmg!", 2.8f);
                 }
                 break;
 
             case 3:
-                int dmg3 = windQuickcast ? Mathf.RoundToInt(8 * 0.8f) : 8;
+                int dmg3 = Mathf.RoundToInt(windQuickcast ? 6.4f : 8f);
                 DealDamageToEnemy(dmg3);
-                Debug.Log($"🌪️ Wind Slot 3: Deal {dmg3} and apply Vulnerable (+25% dmg next turn)!");
-                // Could add Vulnerable status to enemy here
+                CombatLogUI.Instance?.ShowMessage($"You strike for {dmg3} damage!", 2.5f);
                 break;
         }
     }
 
-    // ----------------------------
-    // 🪨 EARTH
-    // ----------------------------
     private void EarthEffect(int slot)
     {
         switch (slot)
         {
             case 1:
-                Debug.Log("🪨 Earth Slot 1: Gain 14 Shield; next 2 Shield effects are 50% stronger!");
-                GainShield(14);
+                GainShield(5);
                 shieldBuff = 1.5f;
+                CombatLogUI.Instance?.ShowMessage("You gain 5 shield (+50% next defense)", 2.5f);
                 break;
 
             case 2:
-                int baseShield = Mathf.RoundToInt(20 * shieldBuff);
-                GainShield(baseShield);
-                Debug.Log($"🪨 Earth Slot 2: Gain {baseShield} Shield.");
+                int shielded = Mathf.RoundToInt(10 * shieldBuff);
+                GainShield(shielded);
+                CombatLogUI.Instance?.ShowMessage($"You gain {shielded} shield!", 2.5f);
                 break;
 
             case 3:
                 int converted = Mathf.Min(25, Mathf.RoundToInt(playerShield * 0.5f));
                 DealDamageToEnemy(converted);
                 playerShield -= converted;
-                Debug.Log($"🪨 Earth Slot 3: Quake! Convert {converted * 2} Shield into {converted} damage.");
+                CombatLogUI.Instance?.ShowMessage($"You convert shield into {converted} dmg!", 2.8f);
                 break;
         }
     }
 
-    // ----------------------------
-    // Utility methods
-    // ----------------------------
     private void DealDamageToEnemy(int dmg)
     {
         if (enemyShield > 0)
@@ -224,61 +310,73 @@ public class HandleCombat : MonoBehaviour
             enemyShield -= absorbed;
             dmg -= absorbed;
         }
-
-        if (dmg > 0)
-            enemyHealth -= dmg;
-
+        if (dmg > 0) enemyHealth -= dmg;
         enemyHealth = Mathf.Max(0, enemyHealth);
+    }
+
+    private void TakeDamage(int dmg)
+    {
+        if (playerShield > 0)
+        {
+            int absorbed = Mathf.Min(playerShield, dmg);
+            playerShield -= absorbed;
+            dmg -= absorbed;
+        }
+        if (dmg > 0) playerHealth -= dmg;
+        playerHealth = Mathf.Max(0, playerHealth);
     }
 
     private void GainShield(int amount)
     {
         playerShield += amount;
+        PlayMusic(2);
     }
 
     private void HealPlayer(int amount)
     {
         playerHealth = Mathf.Min(100, playerHealth + amount);
+        PlayMusic(3);
     }
 
-    private IEnumerator ApplyBurn(int damagePerTick, int ticks)
+    private void UpdateAllUI()
     {
-        for (int i = 0; i < ticks; i++)
-        {
-            yield return new WaitForSeconds(1f);
-            DealDamageToEnemy(damagePerTick);
-            Debug.Log($"🔥 Burn tick: Enemy takes {damagePerTick} damage (Tick {i + 1}/{ticks})");
-            UpdateHealthUI();
-        }
-    }
-
-    private void UpdateHealthUI()
-    {
-        if (playerHealthText != null)
-            playerHealthText.text = $"{playerHealth} ({playerShield}🛡)";
-        else
-            Debug.LogWarning("⚠️ Player TMP text not assigned!");
-
-        if (enemyHealthText != null)
-            enemyHealthText.text = $"{enemyHealth} ({enemyShield}🛡)";
-        else
-            Debug.LogWarning("⚠️ Enemy TMP text not assigned!");
+        if (playerHealthText) playerHealthText.text = $"{playerHealth}";
+        if (enemyHealthText) enemyHealthText.text = $"{enemyHealth}";
+        if (playerShieldText) playerShieldText.text = $"{playerShield}";
+        if (enemyShieldText) enemyShieldText.text = $"{enemyShield}";
     }
 
     private void CheckCombatResult()
     {
+        if (gameEnded) return;
+
         if (playerHealth <= 0 && enemyHealth <= 0)
-            Debug.Log("💀 It's a draw!");
+        {
+            CombatLogUI.Instance?.ShowMessage("💀 It's a draw!", 3f);
+            gameEnded = true;
+            GameManager.Instance?.EndGame(false);
+        }
         else if (playerHealth <= 0)
-            Debug.Log("❌ Player defeated!");
+        {
+            CombatLogUI.Instance?.ShowMessage("❌ You were defeated!", 3f);
+            gameEnded = true;
+            GameManager.Instance?.EndGame(false);
+        }
         else if (enemyHealth <= 0)
-            Debug.Log("🏆 Enemy defeated!");
+        {
+            CombatLogUI.Instance?.ShowMessage("🏆 Enemy defeated! You win!", 3f);
+            gameEnded = true;
+            GameManager.Instance?.EndGame(true);
+        }
     }
 
-    private IEnumerator NextRoundDelay()
+    public void PlayMusic(int type)
     {
-        yield return new WaitForSeconds(2f);
-        GameManager.Instance.StartNextRound();
-        UpdateHealthUI();
+        switch (type)
+        {
+            case 1: if (audioAttack) audioAttack.Play(); break;
+            case 2: if (audioDefend) audioDefend.Play(); break;
+            case 3: if (audioHeal) audioHeal.Play(); break;
+        }
     }
 }
