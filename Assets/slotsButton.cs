@@ -7,7 +7,6 @@ public class SlotsButton : MonoBehaviour
     [Header("Animation Settings")]
     public string spriteObjectName = "slots_spritesheet";
     public AudioSource audioSource; // assign in Inspector
-    public AudioClip musicClip;     // optional: choose clip in Inspector
     public string triggerName = "slotsActive";
     private Animator spriteAnimator;
 
@@ -199,9 +198,6 @@ public class SlotsButton : MonoBehaviour
             Debug.LogWarning("⚠️ No AudioSource assigned!");
             return;
         }
-
-        if (musicClip != null)
-            audioSource.clip = musicClip; // change track if needed
 
         audioSource.Play(); // 🔊 start playing
         Debug.Log("🎵 Music started!");

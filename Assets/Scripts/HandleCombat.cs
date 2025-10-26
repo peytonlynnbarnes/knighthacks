@@ -27,7 +27,8 @@ public class HandleCombat : MonoBehaviour
     private float damageBuff = 1f;
     private float shieldBuff = 1f;
     private float waterBuff = 1f;
-    private bool windQuickcast = false;
+    private bool windDoublecast = false;
+    private float vulnerable = 1f;
     private int enemyBurnStacks = 0;
 
     private bool isPlayerTurn = true;
@@ -65,35 +66,31 @@ public class HandleCombat : MonoBehaviour
 
             string item = "none";
             if (raw.Contains("fire")) item = "fire";
-            else if (raw.Contains("air")) item = "wind";
+            else if (raw.Contains("wind")) item = "wind";
             else if (raw.Contains("water")) item = "water";
             else if (raw.Contains("earth")) item = "earth";
 
             switch (item)
             {
                 case "fire":
-                    PlayMusic(1);
                     CombatLogUI.Instance?.ShowMessage($"Fire Slot {slot} activated!", 2.5f);
                     yield return new WaitForSeconds(1.2f);
                     FireEffect(slot);
                     break;
 
                 case "water":
-                    PlayMusic(3);
                     CombatLogUI.Instance?.ShowMessage($"Water Slot {slot} activated!", 2.5f);
                     yield return new WaitForSeconds(1.2f);
                     WaterEffect(slot);
                     break;
 
                 case "wind":
-                    PlayMusic(1);
                     CombatLogUI.Instance?.ShowMessage($"Wind Slot {slot} activated!", 2.5f);
                     yield return new WaitForSeconds(1.2f);
                     WindEffect(slot);
                     break;
 
                 case "earth":
-                    PlayMusic(2);
                     CombatLogUI.Instance?.ShowMessage($"Earth Slot {slot} activated!", 2.5f);
                     yield return new WaitForSeconds(1.2f);
                     EarthEffect(slot);
@@ -120,7 +117,7 @@ public class HandleCombat : MonoBehaviour
     {
         if (gameEnded) yield break;
 
-        CombatLogUI.Instance?.ShowMessage("👹 Enemy turn begins...", 2f);
+        CombatLogUI.Instance?.ShowMessage("Enemy turn begins...", 2f);
         yield return new WaitForSeconds(1f);
 
         if (enemyBurnStacks > 0)
@@ -145,7 +142,7 @@ public class HandleCombat : MonoBehaviour
         if (!gameEnded && playerHealth > 0 && enemyHealth > 0)
         {
             yield return new WaitForSeconds(2.5f);
-            CombatLogUI.Instance?.ShowMessage("🌀 Your turn!", 1.8f);
+            CombatLogUI.Instance?.ShowMessage("Your turn!", 1.8f);
             isPlayerTurn = true;
             GameManager.Instance?.StartNextRound();
         }
@@ -154,29 +151,29 @@ public class HandleCombat : MonoBehaviour
     private void EnemyAttackPattern()
     {
         enemyTurnCount++;
-        float scale = Mathf.Min(1f + (enemyTurnCount - 1) * 0.08f, 2.0f);
+        float scale = Mathf.Min(1f + (enemyTurnCount - 1) * 0.3f, 3f);
 
         int roll = Random.Range(0, 100);
         if (enemyTurnCount > 6) roll += 15;
 
         if (roll < 40)
         {
-            int damage = Mathf.RoundToInt(8 * scale);
+            int damage = Mathf.RoundToInt(16 * scale);
             PlayMusic(1);
             TakeDamage(damage);
             CombatLogUI.Instance?.ShowMessage($"Enemy claws you for {damage} damage!", 2.5f);
         }
         else if (roll < 70)
         {
-            int shieldGain = Mathf.RoundToInt(8 * scale);
+            int shieldGain = Mathf.RoundToInt(16 * scale);
             PlayMusic(2);
             enemyShield += shieldGain;
             CombatLogUI.Instance?.ShowMessage($"Enemy braces and gains {shieldGain} shield!", 2.5f);
         }
         else
         {
-            int damage = Mathf.RoundToInt(5 * scale);
-            int shieldGain = Mathf.RoundToInt(4 * scale);
+            int damage = Mathf.RoundToInt(8 * scale);
+            int shieldGain = Mathf.RoundToInt(8 * scale);
             PlayMusic(1);
             TakeDamage(damage);
             enemyShield += shieldGain;
@@ -189,7 +186,8 @@ public class HandleCombat : MonoBehaviour
         damageBuff = 1f;
         shieldBuff = 1f;
         waterBuff = 1f;
-        windQuickcast = false;
+        windDoublecast = false;
+        vulnerable = 1f;
     }
 
     private void FireEffect(int slot)
@@ -199,22 +197,34 @@ public class HandleCombat : MonoBehaviour
             case 1:
                 DealDamageToEnemy(5);
                 damageBuff = 1.5f;
+                PlayMusic(1);
                 CombatLogUI.Instance?.ShowMessage("You hit for 5 dmg (+50% next attack!)", 2.5f);
                 break;
 
             case 2:
-                int boosted2 = Mathf.RoundToInt(10 * damageBuff);
+                int boosted2 = Mathf.RoundToInt(10 * damageBuff*vulnerable);
                 DealDamageToEnemy(boosted2);
+                TakeDamage(5);
+                PlayMusic(1);
                 enemyBurnStacks += 6;
-                CombatLogUI.Instance?.ShowMessage($"You deal {boosted2} dmg and apply 6 Burn!", 2.5f);
+                CombatLogUI.Instance?.ShowMessage($"You deal {boosted2} dmg, take 5 dmg, and apply 6 Burn!", 2.5f);
                 break;
 
             case 3:
-                int boosted3 = Mathf.RoundToInt(15 * damageBuff);
-                int recoil = Mathf.RoundToInt(boosted3 * 0.33f);
+                int boosted3 = Mathf.RoundToInt(15 * damageBuff*vulnerable);
+                int recoil = Mathf.RoundToInt(boosted3 * 0.5f);
                 DealDamageToEnemy(boosted3);
                 TakeDamage(recoil);
+                PlayMusic(1);
                 CombatLogUI.Instance?.ShowMessage($"Inferno! {boosted3} dmg, {recoil} recoil!", 2.8f);
+                if(windDoublecast)
+                {
+                    CombatLogUI.Instance?.ShowMessage($"Doublecast activates and you go again!", 2.8f);
+                    DealDamageToEnemy(boosted3);
+                    TakeDamage(recoil);
+                    PlayMusic(1);
+                    CombatLogUI.Instance?.ShowMessage($"Inferno! {boosted3} dmg, {recoil} recoil!", 2.8f);
+                }
                 break;
         }
     }
@@ -226,23 +236,37 @@ public class HandleCombat : MonoBehaviour
             case 1:
                 HealPlayer(6);
                 waterBuff = 1.2f;
+                PlayMusic(3);
                 CombatLogUI.Instance?.ShowMessage("You heal 6 HP (+20% future heals)", 2.5f);
                 break;
 
             case 2:
-                int heal = Mathf.RoundToInt(18 * waterBuff);
-                int shield = Mathf.RoundToInt(10 * waterBuff);
+                int heal = Mathf.RoundToInt(4 * waterBuff);
+                int damage = Mathf.RoundToInt(4 * damageBuff*vulnerable);
                 HealPlayer(heal);
-                GainShield(shield);
-                CombatLogUI.Instance?.ShowMessage($"You heal {heal} and gain {shield} shield!", 2.8f);
+                DealDamageToEnemy(damage);
+                PlayMusic(3);
+                CombatLogUI.Instance?.ShowMessage($"You heal {heal} and deal {damage} damage!", 2.8f);
+                PlayMusic(1);
                 break;
 
             case 3:
-                int dmg = Mathf.RoundToInt(12 * waterBuff);
+                int dmg = Mathf.RoundToInt(8 * waterBuff);
                 int shield2 = Mathf.RoundToInt(8 * waterBuff);
                 DealDamageToEnemy(dmg);
                 GainShield(shield2);
+                PlayMusic(1);
                 CombatLogUI.Instance?.ShowMessage($"You hit for {dmg} and gain {shield2} shield!", 2.8f);
+                PlayMusic(2);
+                if(windDoublecast)
+                {
+                    CombatLogUI.Instance?.ShowMessage($"Doublecast activates and you go again!", 2.8f);
+                    DealDamageToEnemy(dmg);
+                    GainShield(shield2);
+                    PlayMusic(1);
+                    CombatLogUI.Instance?.ShowMessage($"You hit for {dmg} and gain {shield2} shield!", 2.8f);
+                    PlayMusic(2);
+                }
                 break;
         }
     }
@@ -253,26 +277,26 @@ public class HandleCombat : MonoBehaviour
         {
             case 1:
                 DealDamageToEnemy(10);
-                windQuickcast = true;
-                CombatLogUI.Instance?.ShowMessage("You hit for 10 and activate Quickcast!", 2.5f);
+                PlayMusic(1);
+                CombatLogUI.Instance?.ShowMessage("You activate Doublecast for slot 3!", 2.5f);
                 break;
 
             case 2:
-                int dmg2 = Mathf.RoundToInt((windQuickcast ? 11.2f : 14f));
-                DealDamageToEnemy(dmg2);
-                GainShield(4);
-                CombatLogUI.Instance?.ShowMessage($"You deal {dmg2} and gain 4 shield!", 2.8f);
-                if (Random.value < 0.3f)
-                {
-                    DealDamageToEnemy(dmg2);
-                    CombatLogUI.Instance?.ShowMessage($"Double-cast! Another {dmg2} dmg!", 2.8f);
-                }
+                CombatLogUI.Instance?.ShowMessage($"You apply vulnerable!");
+                vulnerable = 1.5f;
                 break;
 
             case 3:
-                int dmg3 = Mathf.RoundToInt(windQuickcast ? 6.4f : 8f);
+                int dmg3 = Mathf.RoundToInt(10 * damageBuff * vulnerable);
                 DealDamageToEnemy(dmg3);
-                CombatLogUI.Instance?.ShowMessage($"You strike for {dmg3} damage!", 2.5f);
+                PlayMusic(1);
+                CombatLogUI.Instance?.ShowMessage($"You strike for {dmg3} damage and double evasion chance for this turn!", 2.5f);
+                if(windDoublecast)
+                {
+                    PlayMusic(1);
+                    DealDamageToEnemy(dmg3);
+                    CombatLogUI.Instance?.ShowMessage($"You strike for {dmg3} damage and double evasion chance for this turn!", 2.5f);
+                }
                 break;
         }
     }
@@ -284,12 +308,14 @@ public class HandleCombat : MonoBehaviour
             case 1:
                 GainShield(5);
                 shieldBuff = 1.5f;
+                PlayMusic(2);
                 CombatLogUI.Instance?.ShowMessage("You gain 5 shield (+50% next defense)", 2.5f);
                 break;
 
             case 2:
                 int shielded = Mathf.RoundToInt(10 * shieldBuff);
                 GainShield(shielded);
+                PlayMusic(2);
                 CombatLogUI.Instance?.ShowMessage($"You gain {shielded} shield!", 2.5f);
                 break;
 
@@ -297,7 +323,14 @@ public class HandleCombat : MonoBehaviour
                 int converted = Mathf.Min(25, Mathf.RoundToInt(playerShield * 0.5f));
                 DealDamageToEnemy(converted);
                 playerShield -= converted;
+                PlayMusic(1);
                 CombatLogUI.Instance?.ShowMessage($"You convert shield into {converted} dmg!", 2.8f);
+                if(windDoublecast)
+                {
+                    PlayMusic(1);
+                    DealDamageToEnemy(converted);
+                    CombatLogUI.Instance?.ShowMessage($"You strike with your converted shields for {converted} dmg!", 2.8f);
+                }
                 break;
         }
     }
@@ -352,19 +385,19 @@ public class HandleCombat : MonoBehaviour
 
         if (playerHealth <= 0 && enemyHealth <= 0)
         {
-            CombatLogUI.Instance?.ShowMessage("💀 It's a draw!", 3f);
+            CombatLogUI.Instance?.ShowMessage("It's a draw!", 3f);
             gameEnded = true;
             GameManager.Instance?.EndGame(false);
         }
         else if (playerHealth <= 0)
         {
-            CombatLogUI.Instance?.ShowMessage("❌ You were defeated!", 3f);
+            CombatLogUI.Instance?.ShowMessage("You were defeated!", 3f);
             gameEnded = true;
             GameManager.Instance?.EndGame(false);
         }
         else if (enemyHealth <= 0)
         {
-            CombatLogUI.Instance?.ShowMessage("🏆 Enemy defeated! You win!", 3f);
+            CombatLogUI.Instance?.ShowMessage("Enemy defeated! You win!", 3f);
             gameEnded = true;
             GameManager.Instance?.EndGame(true);
         }

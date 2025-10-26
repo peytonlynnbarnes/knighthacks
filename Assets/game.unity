@@ -2038,7 +2038,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SlotsButton
   spriteObjectName: slots_spritesheet
   audioSource: {fileID: 0}
-  musicClip: {fileID: 0}
   triggerName: slotsActive
   imageNames:
   - item1
@@ -2049,7 +2048,7 @@ MonoBehaviour:
   - item2_button
   - item3_button
   fireSprite: {fileID: -5612121048563160125, guid: 724b50154363f514e840ca2b219af9df, type: 3}
-  windSprite: {fileID: 5675334840770494424, guid: dc35b2a948d045443b8f253778a3e037, type: 3}
+  windSprite: {fileID: -6055808564847020282, guid: 83109ebe3ad01304cbebac5a2d2efc1b, type: 3}
   waterSprite: {fileID: 1272802124289911190, guid: 6f144a10868d3b144966e5cf6ebeb366, type: 3}
   earthSprite: {fileID: -3093576862408997466, guid: 070e4daed2ffaa34b9bb64f9d9fea1c9, type: 3}
   defaultSprite: {fileID: -613655663532009387, guid: 4ec86d925e6cb7b489ab94daabfe73a9, type: 3}
@@ -3675,7 +3674,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 130.59, y: -73.9}
-  m_SizeDelta: {x: 21.653, y: 27.846}
+  m_SizeDelta: {x: 25, y: 25}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1158196788
 MonoBehaviour:
@@ -4494,7 +4493,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 183.5, y: -73.9}
-  m_SizeDelta: {x: 21.653, y: 27.846}
+  m_SizeDelta: {x: 25, y: 25}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1610003310
 MonoBehaviour:
@@ -4864,7 +4863,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 75.946, y: -72.957}
-  m_SizeDelta: {x: 21.653, y: 27.846}
+  m_SizeDelta: {x: 25, y: 25}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1808631403
 MonoBehaviour:
@@ -5183,7 +5182,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CombatLogUI
   logText: {fileID: 1950715150}
-  maxLines: 8
 --- !u!114 &1907513921
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5382,8 +5380,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 20
-  m_fontSizeBase: 20
+  m_fontSize: 25
+  m_fontSizeBase: 25
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
